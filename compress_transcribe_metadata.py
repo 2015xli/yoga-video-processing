@@ -20,6 +20,7 @@ try:
     from video_compress import VideoCompressor
     from video_transcribe import SubtitleGenerator
     from video_metadata import MetadataGenerator
+    from srt_refine import SrtRefiner
 except ImportError:
     logger.error("Required modules not found. Please ensure video_compress.py, video_transcribe.py and video_metadata.py are available.")
     sys.exit(1)
@@ -30,6 +31,7 @@ class VideoPipeline:
         self.config = config
         self.compressor = VideoCompressor()
         self.transcriber = SubtitleGenerator()
+        self.srt_refiner = SrtRefiner()
         self.metadata_gen = MetadataGenerator()
 
     def process_file(self, input_path: Path, temp_root: Path, output_root: Path) -> Path:
@@ -41,10 +43,12 @@ class VideoPipeline:
             # 2. 生成字幕
             srt_path = self._generate_subtitle(compressed_path, temp_root)
             
-            # 3. 嵌入元数据
+            refined_srt = self._refine_srt(srt_path)
+            
+            # 4. 嵌入元数据
             video_path = self._embed_metadata(compressed_path, srt_path, temp_root)
             
-            # 4. 移到ouput目录，清理临时文件
+            # 5. 移到ouput目录，清理临时文件
             if temp_root != output_root:
                 self._cleanup(video_path, temp_root, output_root)
             
@@ -73,6 +77,20 @@ class VideoPipeline:
             temp_path=temp_root,
             model_type=self.config['model']
         )
+
+    def _refine_srt(self, subtitle_path: Path) -> Path:
+
+        if self.config['skip_ai']:
+            logger.info(f"Skipping subtitle refining for {subtitle_path}")
+            return subtitle_path
+            
+        return self.srt_refiner.refine(
+            subtitle_path = subtitle_path,  
+            api_type = self.config['api'], 
+            split_method=self.config['split'],
+            stride=self.config['stride']
+        )  
+
 
     def _embed_metadata(self, video_path: Path, srt_path: Path, temp_root: Path) -> Path:
         """嵌入元数据"""

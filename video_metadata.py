@@ -23,10 +23,7 @@ class YogaMetadataGenerator:
         self.chunk_stride = stride * 60   # 划分一个chunk的stride时间，一个chunk的实际时间为stride+overlap
         self.chunk_overlap = overlap * 60  # 两个相邻chunk之间的重叠时间
         self.chunk_max = (stride+overlap) * 1.5 * 60 # 最长chunk的时间, 1.5个stride，用于计算最后一个chunk大小。
-        self.chapter_length_min = 1 * 60 # 最短一章时间为1分钟（秒）
-
-        self.chunks = self._partition_subtitles_to_chunks(srt_parser.segments)
-        
+        self.chapter_length_min = 0.3 * 60 # 最短一章时间为1分钟（秒）
         
     def _init_api(self, api_type):
         if api_type == 'deepseek':
@@ -45,22 +42,6 @@ class YogaMetadataGenerator:
         template = prompt_path.read_text(encoding="utf-8")
         return template
 
-    def _process_srt_prompt(self, subtitles):
-      
-        # 转为字符串
-        json_section = subtitles
-
-        # 计算模板文件路径（脚本所在目录的同级文件）
-        template = self._load_template_file("prompt_process_srt.txt")
-
-        # 使用 f-string 渲染模板中的表达式（例如 {self.chunk_stride + self.chunk_overlap}）
-        prompt_body = eval(f"f'''{template}'''")
-
-        # 在函数内部追加 JSON 格式的 simplified 内容
-        prompt = f"{prompt_body}\n{json_section}"
-
-        return prompt
-
     def _process_chunk_prompt(self, segments_chunk):
         simplified = [{
             "start": seg['start_str'],
@@ -71,7 +52,7 @@ class YogaMetadataGenerator:
         json_section = json.dumps(simplified, ensure_ascii=False, indent=2)
 
         # 计算模板文件路径（脚本所在目录的同级文件）
-        template = self._load_template_file("prompt_process_chunk.txt")
+        template = self._load_template_file("process_chunk.prompt")
 
         # 使用 f-string 渲染模板中的表达式（例如 {self.chunk_stride + self.chunk_overlap}）
         prompt_body = eval(f"f'''{template}'''")
@@ -88,7 +69,7 @@ class YogaMetadataGenerator:
         json_section = json.dumps(simplified, ensure_ascii=False, indent=2)
 
         # 计算模板文件路径（脚本所在目录的同级文件）
-        template = self._load_template_file("prompt_process_summary.txt")
+        template = self._load_template_file("process_summary.prompt")
 
         # 使用 f-string 渲染模板中的表达式（例如 {self.chunk_stride + self.chunk_overlap}）
         prompt_body = eval(f"f'''{template}'''")
@@ -105,7 +86,7 @@ class YogaMetadataGenerator:
         json_section = json.dumps(simplified, ensure_ascii=False, indent=2)
 
         # 计算模板文件路径（脚本所在目录的同级文件）
-        template = self._load_template_file("prompt_process_chapters.txt")
+        template = self._load_template_file("process_chapters.prompt")
 
         # 使用 f-string 渲染模板中的表达式（例如 {self.chunk_stride + self.chunk_overlap}）
         prompt_body = eval(f"f'''{template}'''")
@@ -157,16 +138,16 @@ class YogaMetadataGenerator:
         return merged
 
     def _split_time_chunks(self, segments):
-        self.total_duration = max(s['end_sec'] for s in segments)
+        total_duration = self.srt_parser.total_duration
 
         chunks = []
         current_start = 0
 
-        while current_start < self.total_duration:
+        while current_start < total_duration:
             # 先计算本chunk的最后一段的开始时间，以及下个chunk第一段的开始时间
-            if self.total_duration - current_start < self.chunk_max:
+            if total_duration - current_start < self.chunk_max:
                 # 如果剩余长度小于允许的最大chunk，则不再分段，直接把本chunk的终止时间设为最后
-                next_start = self.total_duration
+                next_start = total_duration
                 current_end = next_start
             else:
                 # 否则，本chunk的最后一段的开始时间设为加上一个标准chunk大小(stride+overlap)
@@ -255,7 +236,7 @@ class YogaMetadataGenerator:
         print(all_responses)
         
         if len(chunks) == 1:                    
-            analysis = all_responses[0];
+            analysis = all_responses[0]
             
         elif len(chunks) == 2:                    
             all_summaries = [response['summary'] for response in all_responses ]
@@ -275,7 +256,7 @@ class YogaMetadataGenerator:
             # mostly the analysis is good enough, but sometimes it needs merge chapters.
             description = analysis['summary']
             chapters = self._merge_chapters(analysis['chapters'])
-            analysis = {"summary": description, "chapters": chapters)
+            analysis = {"summary": description, "chapters": chapters}
         
         return analysis
 
@@ -290,27 +271,12 @@ class YogaMetadataGenerator:
 
     def analyze_postures(self):
         
-        analysis = self._analyze_postures_in_chunks(self.chunks)
+        chunks = self._partition_subtitles_to_chunks(self.srt_parser.segments)
+        
+        analysis = self._analyze_postures_in_chunks(chunks)
             
         return analysis
-       
-    def refine_srt_words(self):
-        subtitle_path = self.srt_parser.subtitle_path
-
-        #TODO 
-        all_subtitles = []
-        for chunk in self.chunks:
-            content = self._process_srt_prompt(chunk)
-            chunk_subtitles = self._ai_process(content)['refined_srt']
-            all_subtitles.extend(chunk_subtitles)
-        #use new subtitles to replace segment contents, the chunks data structure remains
-        
-        new_subtitles = json.dump(all_subtitles)
-        new_subtitle_file = f"{subtitle_path.stem}.refined.srt"
-        new_subtitle_path = subtitle_path.parent / Path(new_subtitle_file)
-        new_subtitle_path.write_text(new_subtitles, encoding='utf-8')
-        return new_subtitle_path
-          
+                 
     def _time_to_sec(self, time_str):
         dt = datetime.strptime(time_str, "%H:%M:%S")
         return dt.hour * 3600 + dt.minute * 60 + dt.second
@@ -343,11 +309,12 @@ class YogaMetadataGenerator:
     
 class SrtParser:
 
-    def __init__(self, subtitle_path)：
+    def __init__(self, subtitle_path):
         self.subtitle_path = subtitle_path
         segments = self._parse(subtitle_path)
         self.segments = self._merge_segments(segments, max_gap=0.1, max_duration=60.0)
-    
+        self.total_duration = max(s['end_sec'] for s in segments)
+   
     def _parse(self, subtitle_path):
         """使用 pysrt 解析 SRT 文件"""
         subs = pysrt.open(subtitle_path)
@@ -430,11 +397,7 @@ class MetadataGenerator:
         srt_parser = SrtParser(subtitle_path)
 
         processor = YogaMetadataGenerator(srt_parser, video_path, api_type, split_method, stride, overlap)
-        
-        if not skip_ai:
-            subtitle_path = processor.refine_srt_words()
-                
-        
+                 
         filename = video_path.name
         base_name = video_path.stem
         summary_file = f"{base_name}.summary.json"
