@@ -9,7 +9,7 @@ PC reads video files from a smartphone to a video server. Server iterates the gi
 	- find and move video files from USB devices to server. Run on PC when USB is plugged.
 2. [compress_transcribe_metadata.py](#1) 
 	- the entry driver for all tasks: compress the video, transcribe to srt, refine the srt, generate metadata.
-3. video_compress.py
+3. [video_compress.py](#2)
 	- compress the video with H.265.
 4. video_transcribe.py 
 	- transcribe to subtitle srt file with local AI models.
@@ -47,7 +47,7 @@ PC reads video files from a smartphone to a video server. Server iterates the gi
 Iterate the input root directory to find video files, then process them one after another by invoking the pipeline tasks.
 
 ---
-### Compress video
+### Compress video {#2}
 
 Compress a video file with H.265 encoder. 
 
