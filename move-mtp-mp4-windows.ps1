@@ -111,7 +111,7 @@ No = Move to $otherName
     if (-not (Test-Path $destDir)) { New-Item -ItemType Directory -Path $destDir | Out-Null }
 
     $newName = $useDT.ToString('yyyyMMdd_HHmmss') + $ext
-    Write-Host "Processing: $fileName → $destDir\$newName"
+    Write-Host "Processing: $fileName -> $destDir\$newName"
     
     try {
         $shellApp.Namespace($destDir).CopyHere($file, 16)

@@ -124,7 +124,7 @@ class YogaSrtRefiner:
         return self._parse_response(response, chunk)
 
     def _ai_process(self, prompt):
-        print(f"Prompt:{prompt}")
+        #print(f"Prompt:{prompt}")
         response = self.api_client.chat.completions.create(
             model = self.model,
             messages=[{
@@ -134,7 +134,7 @@ class YogaSrtRefiner:
             }]
         )
         response = response.choices[0].message.content
-        print(f"Reponse:{response}")
+        #print(f"Reponse:{response}")
         return response
 
     def _parse_response(self, response_text, original_chunk):
