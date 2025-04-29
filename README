@@ -1,10 +1,10 @@
-== Yoga video processing ==
+## Yoga video processing 
 
 
 This is an AI task pipeline to process the input video files that are Yoga training classes. Each task can execute independently if used separately. 
 PC reads video files from a smartphone to a video server. Server iterates the given input directory tree to identify the uploaded video files, then compress the video, transcribe to srt, refine the srt, generate metadata for the video. 
 
-Tasks in the pipeline:
+** Tasks in the pipeline: **
 1. move-mtp-mp4-windows.ps1: 
 	- find and move video files from USB devices to server. Run on PC when USB is plugged.
 2. compress_transcribe_metadata.py
@@ -23,24 +23,24 @@ Tasks in the pipeline:
 7. video_transcribe_openai_api.py
 	- The same functionality as video_transcribe.py, but use remote API.
 
--- compress_transcribe_metadata --
+### compress_transcribe_metadata --
 Input arguments:
-	Input root directory: for original video files,
-	Temp root directory: for intermediate files, such as the compressed video files, extracted audio files, generated srt files, metadata files, etc. The temp root dir is used as the output dir of video_compress.py, and as the temp dir of video_transcribe.py, as the working dir of srt_refine.py and video_metadata.py.
-	Output root directory: for final results, including the compressed video file with embedded metadata, generated srt file, also the summary and metadata files just for fun.
-	The directory tree structures of the three dirs are the same.
+	- Input root directory: for original video files,
+	- Temp root directory: for intermediate files, such as the compressed video files, extracted audio files, generated srt files, metadata files, etc. The temp root dir is used as the output dir of video_compress.py, and as the temp dir of video_transcribe.py, as the working dir of srt_refine.py and video_metadata.py.
+	- Output root directory: for final results, including the compressed video file with embedded metadata, generated srt file, also the summary and metadata files just for fun.
+	- The directory tree structures of the three dirs are the same.
 
-	--skip-compression, the video files are compressed already. Skip the compression step. Use the input root directory as the temp root dir for the compressed videos to transcribe and embed metadata. If the output dir is the same as the input dir, no need to move them to the output root dir.
-	--erase-original is to remove the original video. default is false.
-	--erase-temp is to remove the intermediate files. default is false.
-	--model is to specify faster-whisper or openai-whisper for ASR. default is faster-whisper.
-	--api is to specify openai or deepseek for summarization. default is deepseek.
-	--split to choose how to split the subtitle into chunks, in time or token. default is time.
-	--stride to specify the STRIDE value of a time-split chunk (only valid when split is time). default is 15.
-	--overlap to specify the OVERLAP value between two chunks (only valid when split is time). default is 5.
+	- --skip-compression, the video files are compressed already. Skip the compression step. Use the input root directory as the temp root dir for the compressed videos to transcribe and embed metadata. If the output dir is the same as the input dir, no need to move them to the output root dir.
+	- --erase-original is to remove the original video. default is false.
+	- --erase-temp is to remove the intermediate files. default is false.
+	- --model is to specify faster-whisper or openai-whisper for ASR. default is faster-whisper.
+	- --api is to specify openai or deepseek for summarization. default is deepseek.
+	- --split to choose how to split the subtitle into chunks, in time or token. default is time.
+	- --stride to specify the STRIDE value of a time-split chunk (only valid when split is time). default is 15.
+	- --overlap to specify the OVERLAP value between two chunks (only valid when split is time). default is 5.
 
 
--- video-compress --
+### video-compress --
 Compress a video file with H.265 encoder. 
 Input arguments: 
     	The path of input video file.
@@ -50,7 +50,7 @@ Input arguments:
 Functionality:    
 	If the input video file is not H.265 encoded, then compress it with H.265 encoder. Use hardware acceleration hevc_nvenc on host xf-workstation; or software encoder libx265 on host XF-NAS and other hosts. The resulted file has "x265" inserted in the original filename right before the suffix. Conduct the compression in the output directory. Remove the original video files if the compression is finished successfully, and the option --erase-original is optional.
 
--- video-transcribe --
+### video-transcribe --
 Transcribe a video file to srt subtitle file. 
 Input arguments:
     	The path of the input video file.
@@ -60,7 +60,7 @@ Input arguments:
 Functionality:
 	Extract the audio of the input video into the temporary dir, and then use faster-whisper or openai-whisper package to transcribe the audio into subtitle srt file. Both original and target languages are Chinese. Most of the audio is yoga exercise instructions given by the Yoga teacher. An initial prompt is given to the model to assist the transcription. Keep the subtitle file basename same as the video file basename. The temp files are removed once everything is done. 
 
--- srt-refine --
+### srt-refine --
 Refine the srt subtitles by correcting the wordings.
 Input arguments:
 	The srt file.
@@ -71,7 +71,7 @@ Input arguments:
 Functinality:
 	Correct the subtitles with AI model. ASR in video transcription may generate lots of minor errors. A reasonable prompt can help a lot, especially for those Yoga gestures.
 
--- generate-metadata --
+### generate-metadata --
 Summarize the yoga training class content into video file metadata.
 Input arguments:
 	A subtitle file.
@@ -90,9 +90,9 @@ No matter split by time or token, we need some overlap (5min) between two neighb
 chunk len = stride + overlap 
   stide overlap 
 0 --------
-        1 --------
-                2 --------
-                        3 ---------
+      1 --------
+            2 --------
+                  3 -----------
                           remaining 
            (chunk_len * 0.5 + overlap) <= remaining <= (chunk_len * 1.5)
 
