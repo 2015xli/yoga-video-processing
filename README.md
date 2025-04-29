@@ -7,9 +7,9 @@ PC reads video files from a smartphone to a video server. Server iterates the gi
 
 1. move-mtp-mp4-windows.ps1: 
 	- find and move video files from USB devices to server. Run on PC when USB is plugged.
-2. [compress_transcribe_metadata.py](#1) 
+2. [compress_transcribe_metadata.py](#id-1) 
 	- the entry driver for all tasks: compress the video, transcribe to srt, refine the srt, generate metadata.
-3. [video_compress.py](#2)
+3. [video_compress.py](#id-2)
 	- compress the video with H.265.
 4. video_transcribe.py 
 	- transcribe to subtitle srt file with local AI models.
@@ -24,7 +24,7 @@ PC reads video files from a smartphone to a video server. Server iterates the gi
 	- The same functionality as video_transcribe.py, but use remote API.
 
 ---
-### Driver: Compress-transcribe-metadata {#1}
+### Driver: Compress-transcribe-metadata {#id-1}
 
 **Input arguments:**
 
@@ -47,7 +47,7 @@ PC reads video files from a smartphone to a video server. Server iterates the gi
 Iterate the input root directory to find video files, then process them one after another by invoking the pipeline tasks.
 
 ---
-### Compress video {#2}
+### Compress video {#id-2}
 
 Compress a video file with H.265 encoder. 
 
