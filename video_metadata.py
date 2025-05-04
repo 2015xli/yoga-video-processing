@@ -294,7 +294,7 @@ class YogaMetadataGenerator:
                 "TIMEBASE=1/1",
                 f"START={start_sec}",
                 f"END={start_sec + 60}",
-                f"title=Chapter {i+1}: {chap['posture']}\n"
+                f"title={i+1}.{chap['posture']}\n"
             ])
         
         base_name = video_path.stem
