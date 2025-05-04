@@ -96,11 +96,13 @@ Yes = Move to $defaultName
 No = Move to $otherName
 "@
 
-    $defaultBtn = if ($defaultName -eq 'Mason') { 
-        [Microsoft.VisualBasic.MsgBoxStyle]::DefaultButton1 
-    } else { 
-        [Microsoft.VisualBasic.MsgBoxStyle]::DefaultButton2 
-    }
+    # defaultBtn is always Yes (i.e., DefaultButton1), since Yes is for Move to $defaultName
+    $defaultBtn = [Microsoft.VisualBasic.MsgBoxStyle]::DefaultButton1
+    #$defaultBtn = if ($defaultName -eq 'Mason') {
+    #    [Microsoft.VisualBasic.MsgBoxStyle]::DefaultButton1
+    #} else {
+    #    [Microsoft.VisualBasic.MsgBoxStyle]::DefaultButton2
+    #}
 
     $ansTgt = Prompt-YesNo $msgTgt "Destination Selection" $defaultBtn
     $baseTarget = if ($ansTgt -eq 6) { $defaultTarget } else { (($pathLucy, $pathMason) -ne $defaultTarget)[0] }
