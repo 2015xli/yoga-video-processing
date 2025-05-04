@@ -7,20 +7,20 @@ PC reads video files from a smartphone to a video server. Server iterates the gi
 
 1. move-mtp-mp4-windows.ps1: 
 	- find and move video files from USB devices to server. Run on PC when USB is plugged.
-2. [compress_transcribe_metadata.py](#Driver-Compress-transcribe-metadata) 
+2. compress_transcribe_metadata.py [Explanatioin](#Driver-Compress-transcribe-metadata) 
 	- the entry driver for all tasks: compress the video, transcribe to srt, refine the srt, generate metadata.
-3. [video_compress.py](#Compress-video)
+3. video_compress.py [Explanatioin](#Compress-video)
 	- compress the video with H.265.
-4. video_transcribe.py 
+4. video_transcribe.py [Explanatioin](#Transcribe-video) 
 	- transcribe to subtitle srt file with local AI models.
 	- (with built-in short initial prompt)
-5. srt_refine.py 
+5. srt_refine.py [Explanatioin](#Refine-SRT-subtitles)
 	- refine the srt file subtitles by correcting the wordings with remote AI models.
 	- (prompt file: process_srt.prompt)
-6. video_metadata.py 
+6. video_metadata.py [Explanatioin](#Generate-video-metadata)
 	- summarize the srt file with remote AI models, generate metadata and embed into the video files.
 	- (prompt files:  process_chunk.prompt, process_chapters.prompt, process_summary.prompt)
-7. video_transcribe_openai_api.py
+7. (Optional) video_transcribe_openai_api.py [Explanatioin](#transcribe-with-openAI-whisper)
 	- The same functionality as video_transcribe.py, but use remote API.
 
 ---
@@ -129,3 +129,32 @@ chunk len = stride + overlap
 
 If split is by token, and the API max context token number is large enough for the srt file, then the code falls back to use time based split, in order to have smaller chunk size. Smaller chunk size makes the posture recognition more accurate. 
 
+### Transcribe with OpenAI API to Whisper
+
+Previous video_transcribe.py uses local models (faster-whisper or openai-whisper) that has a benefit that the audio file is processed iterateively and automatically till finish. video_transcribe_openai_api.py uses cloud OpenAI API for the transcription. The problem with this approach is, it can only process less than ~20MB audio file. 
+The code splits the audio file into segments with overlapping duration to avoid broken sentences, transcribes the segments one by one, and then merge the resulted segments of subtitles.
+        
+**The input arguments:**
+
+* The video file to transcribe
+* Temp dir for itermediate files like audio file and segments, srt segments, etc.
+* Options
+	* --stride, Segment stride in minutes (default: 20). This is short enough to fit into OpenAI API.  
+	* --overlap, Segment overlapping duration (default: 2). One minute after the boundary is long enough to finish the last sentence. We only take a subtitle line after half_ov
+
+The merge of subtitles is simply to take the subtitle lines that start after base + half_overlap, and end before base + length - half_overlap.
+
+        # Voice may cross the boundary of segments, so when we take a subtitle line, 
+        # we should not start after the boundary; instead, we start after half_ov.
+        # Then for every sub line, take it in the final srt if,
+        # 1. it is in the first segment, and starts before tail_thr (i.e., length - half_ov)
+        # 2. it is in a mid segment, starts after head_thr and before tail_thr
+        # 3. it is in the last segment, starts after head_thr. 
+        # Conditions should be
+        #  if (idx == 0 and st <= tail_thr) or
+        #     (0 < idx < last_idx and head_thr < st <= tail_thr) or
+        #     (idx == last_idx and st > head_thr):
+
+**Functionalities:**
+
+For remote API access, we now extract 128k aac audio to m4a container, instead of wav audio to save bandwidth.
