@@ -144,6 +144,7 @@ The code splits the audio file into segments with overlapping duration to avoid 
 
 The merge of subtitles is simply to take the subtitle lines that start after base + half_overlap, and end before base + length - half_overlap.
 
+```
         # Voice may cross the boundary of segments, so when we take a subtitle line, 
         # we should not start after the boundary; instead, we start after half_ov.
         # Then for every sub line, take it in the final srt if,
@@ -154,6 +155,7 @@ The merge of subtitles is simply to take the subtitle lines that start after bas
         #  if (idx == 0 and st <= tail_thr) or
         #     (0 < idx < last_idx and head_thr < st <= tail_thr) or
         #     (idx == last_idx and st > head_thr):
+```
 
 **Functionalities:**
 
