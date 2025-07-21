@@ -169,15 +169,26 @@ def merge_srt(segments, srt_paths, output_srt):
         subs = pysrt.open(str(srt_file), encoding='utf-8')
         head_thr, tail_thr = half_ov, length - half_ov
 
+        # Voice may cross the boundary of segments, so when we take a subtitle line, 
+        # we should not start after the boundary; instead, we start after half_ov.
+        # Then for every sub line, take it in the final srt if,
+        # 1. it is in the first segment, and starts before tail_thr (i.e., length - half_ov)
+        # 2. it is in a mid segment, starts after head_thr and before tail_thr
+        # 3. it is in the last segment, starts after head_thr. 
+        # Conditions should be
+        #  if (idx == 0 and st <= tail_thr) or
+        #     (0 < idx < last_idx and head_thr < st <= tail_thr) or
+        #     (idx == last_idx and st > head_thr):
+        
         for sub in subs:
             st = sub.start.ordinal / 1000.0
             en = sub.end.ordinal   / 1000.0
 
-            if idx == 0 and en <= tail_thr:
+            if idx == 0 and st <= tail_thr:
                 sub.shift(seconds=base); merged.append(sub)
-            elif 0 < idx < last_idx and head_thr <= st <= tail_thr:
+            elif 0 < idx < last_idx and head_thr < st <= tail_thr:
                 sub.shift(seconds=base); merged.append(sub)
-            elif idx == last_idx and st >= head_thr:
+            elif idx == last_idx and st > head_thr:
                 sub.shift(seconds=base); merged.append(sub)
 
     merged.sort(key=lambda s: s.start.ordinal)

@@ -23,7 +23,7 @@ class YogaMetadataGenerator:
         self.chunk_stride = stride * 60   # 划分一个chunk的stride时间，一个chunk的实际时间为stride+overlap
         self.chunk_overlap = overlap * 60  # 两个相邻chunk之间的重叠时间
         self.chunk_max = (stride+overlap) * 1.5 * 60 # 最长chunk的时间, 1.5个stride，用于计算最后一个chunk大小。
-        self.chapter_length_min = 0.3 * 60 # 最短一章时间为1分钟（秒）
+        self.chapter_length_min = 0.3 * 60 # 最短一章时间为0.3 * 1分钟（秒）
         
     def _init_api(self, api_type):
         if api_type == 'deepseek':
@@ -122,15 +122,15 @@ class YogaMetadataGenerator:
             current_start = self._time_to_sec(chap['start'])
             
             if current_start < last_end:  
-                # 开始时间相差不足一分钟，认为时间重叠，合并为一个章节
+                # 本章节开始时间 < (上一个章节开始时间 + 最小章节时长)，认为时间重叠，合并为一个章节
                 if chap['posture'] in last['posture']:
-                    # 体式已经在章节中包含，忽略chap内容
+                    # 体式已经在上章节中包含，忽略本chap内容，仍使用上一章节
                     pass
                 elif last['posture'] in chap['posture']:
-                    # chap体式更多，作为章节体式
+                    # 相反，本chap体式包含上一章节体式，修改上一章节体式 (因为上一章节已经放在merged结果中)
                     last['posture'] = chap['posture']
                 else:
-                    # 否则，把chap体式加入章节体式
+                    # 否则，把chap体式加入上一章节体式
                     last['posture'] += f" → {chap['posture']}"
             else:
                 # 否则，独立为一个章节
@@ -241,8 +241,10 @@ class YogaMetadataGenerator:
         elif len(chunks) == 2:                    
             all_summaries = [response['summary'] for response in all_responses ]
             all_chapters = [response['chapters'] for response in all_responses]
+            # only two chunks, directly merge them without using LLM. 
             chapters = self._merge_chapters(all_chapters)
 
+            # only use LLM for summary merge
             content = self._process_summary_prompt(all_summaries)
             description = self._ai_process(content)['summary']
             
@@ -250,12 +252,13 @@ class YogaMetadataGenerator:
         else:
             all_chapters = [ response['chapters'] for response in all_responses ] 
             
+            # more than two chunks, merge them using LLM.
             content = self._process_chapters_prompt(all_chapters)
-                      
             analysis = self._ai_process(content)
             # mostly the analysis is good enough, but sometimes it needs merge chapters.
-            description = analysis['summary']
             chapters = self._merge_chapters(analysis['chapters'])
+
+            description = analysis['summary']
             analysis = {"summary": description, "chapters": chapters}
         
         return analysis
